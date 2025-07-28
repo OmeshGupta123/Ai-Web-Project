@@ -173,7 +173,7 @@ export const removeImageBackground = async (req, res) => {
 export const removeImageObject = async (req, res) => {
     try {
         const { userId } = req.auth;
-        const { image } = req.file;
+        const  image = req.file;
         const plan = req.plan;
         const { object } = req.body
 
@@ -218,14 +218,14 @@ export const resumeReview = async (req, res) => {
             return res.json({ success: false, message: "Resume file size exeeds allowed size (5MB)." })
         }
 
-        const dataBuffer = fs.readFileaSync(resume.path);
+        const dataBuffer = fs.readFileSync(resume.path);
         const pdfData = await pdf(dataBuffer)
 
         const promt = `Review the following resume and provide constructive feedback on its strengths, weakness, and areas for improvement. Resume Content:/n/n${pdfData.text}`
 
 
         const response = await AI.chat.completions.create({
-            model: "gemini-2.5-flash",
+            model: "gemini-2.0-flash",
             messages: [
                 {
                     role: "user",
