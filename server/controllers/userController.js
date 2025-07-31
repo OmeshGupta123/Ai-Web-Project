@@ -33,7 +33,7 @@ export const toggleLikeCreation = async (req,res) => {
             return res.json({success: false, message: 'creation not found'})
         }
 
-        const currentLikes = creation.likes;
+         const currentLikes = creation.likes || [];
         const useridStr = userId.toString();
         let updatedLikes;
         let message;
