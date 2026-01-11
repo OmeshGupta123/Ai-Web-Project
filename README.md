@@ -200,13 +200,3 @@ The frontend uses nested routing under a main AI layout:
 | `/ai/community` | `<Community />` | UI for viewing published creations. |
 
 ---
-
-## 🤝 Contribution
-
-Contributions are highly encouraged! Feel free to open issues to report bugs or suggest new features, or submit pull requests for any improvements you implement.
-
----
-
-## 📜 License
-
-This project is licensed under the **MIT License**.
