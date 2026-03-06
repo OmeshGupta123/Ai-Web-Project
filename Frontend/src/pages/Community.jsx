@@ -18,9 +18,23 @@ const Community = () => {
 
   const fetchCreations = async () => {
     try {
-      const { data } = await axios.get('/api/ai/user/get-published-creations', {
-        headers: { Authorization: `Bearer ${await getToken()}` }
-      })
+      // for if we don't want to give access to the guest of public creations.
+      // const { data } = await axios.get('/api/ai/user/get-published-creations', {
+      //   headers: { Authorization: `Bearer ${await getToken()}` }
+      // })
+
+      // we want to give access to the guest of public creations.
+      const url = isGuest
+        ? '/api/guest/ai/get-published-creations'
+        : '/api/ai/user/get-published-creations';
+
+      const config = isGuest
+        ? {}
+        : { headers: { Authorization: `Bearer ${await getToken()}` } };
+
+      const { data } = await axios.get(url, config);
+
+
       if (data.success) {
         setCreations(data.creations);
       } else {
@@ -33,7 +47,7 @@ const Community = () => {
   }
 
   const imageLikeToggle = async (id) => {
-    if (!user) {
+    if (!user || isGuest) {
       toast.error("Please login to like creations!");
       return;
     }
@@ -53,11 +67,14 @@ const Community = () => {
     }
     setLoading(false)
   }
+
   useEffect(() => {
     if (isLoaded) {
       if (isSignedIn && user) {
         fetchCreations();
       } else if (isGuest) {
+        fetchCreations();
+      } else {
         setLoading(false);
       }
     }

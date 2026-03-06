@@ -3,7 +3,7 @@
 export const guestAuth = (req, res, next) => {
     // Mark this request as a guest — no Clerk session needed
     const isFullGuest = req.headers['x-guest-mode'] === 'full';
-    req.plan = isFullGuest ? 'premium' : 'guest';
+    req.plan = 'guest';
     req.free_usage = 0;
 
     if (!req.auth) req.auth = {};

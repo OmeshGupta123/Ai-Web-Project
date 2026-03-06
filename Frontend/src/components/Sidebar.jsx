@@ -6,13 +6,13 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useGuest } from '../context/GuestContext';
 
 const navItems = [
-  { to: '/ai', label: 'Dashboard', Icon: House , isFree: true},
-  { to: '/ai/write-article', label: 'Write Article', Icon: SquarePen, isFree: true},
+  { to: '/ai', label: 'Dashboard', Icon: House, isFree: true },
+  { to: '/ai/write-article', label: 'Write Article', Icon: SquarePen, isFree: true },
   { to: '/ai/blog-titles', label: 'Blog Titles', Icon: Hash, isFree: true },
-  { to: '/ai/generate-images', label: 'Generate Images', Icon: Image, isFree: true},
-  { to: '/ai/remove-background', label: 'Remove Background', Icon: Eraser, isFree: false},
-  { to: '/ai/remove-object', label: 'Remove Object', Icon: Scissors, isFree: false},
-  { to: '/ai/review-resume', label: 'Review Resume', Icon: FileText, isFree: false},
+  { to: '/ai/generate-images', label: 'Generate Images', Icon: Image, isFree: true },
+  { to: '/ai/remove-background', label: 'Remove Background', Icon: Eraser, isFree: false },
+  { to: '/ai/remove-object', label: 'Remove Object', Icon: Scissors, isFree: false },
+  { to: '/ai/review-resume', label: 'Review Resume', Icon: FileText, isFree: false },
   { to: '/ai/community', label: 'Community', Icon: Users, isFree: true }
 ]
 
@@ -24,7 +24,7 @@ const Sidebar = ({ sidebar, setSidebar }) => {
   const navigate = useNavigate();
 
   return (
-    <div className={`w-60 bg-white border-r border-gray-200 flex flex-col justify-between items-center max-sm:absolute top-14 bottom-0 ${sidebar ? 'translate-x-0' : 'max-sm:-translate-x-full'} transition-all duration-300  ease-in-out `}>
+    <div className={`w-60 bg-white border-r border-gray-200 flex flex-col justify-between items-center max-sm:absolute top-14 bottom-0 z-10 ${sidebar ? 'translate-x-0' : 'max-sm:-translate-x-full'} transition-all duration-300 ease-in-out`}>
       <div className='my-7 w-full'>
         <img src={user?.imageUrl || "https://api.dicebear.com/7.x/avataaars/svg?seed=Guest"} alt="user avatar" className='w-18 h-18 object-cover rounded-full mx-auto bg-gray-100' />
         <h1 className='mt-1 text-center'>{user?.fullName || "Guest User"}</h1>

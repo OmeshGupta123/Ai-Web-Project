@@ -5,8 +5,9 @@ import {
     generateImage,
     removeImageBackground,
     removeImageObject,
-    resumeReview
+    resumeReview,
 } from "../controllers/aiController.js";
+import { getPublishedCreations } from "../controllers/userController.js";
 import { guestAuth } from "../middlewares/guestAuth.js";
 import { upload } from "../configs/multer.js";
 
@@ -21,5 +22,7 @@ guestAiRouter.post('/generate-image', guestAuth, generateImage);
 guestAiRouter.post('/remove-image-background', upload.single('image'), guestAuth, removeImageBackground);
 guestAiRouter.post('/remove-image-object', upload.single('image'), guestAuth, removeImageObject);
 guestAiRouter.post('/resume-review', upload.single('resume'), guestAuth, resumeReview);
+guestAiRouter.get('/get-published-creations',guestAuth,getPublishedCreations);
+
 
 export default guestAiRouter;

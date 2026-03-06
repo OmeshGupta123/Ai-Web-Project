@@ -1,0 +1,15 @@
+1. Backend (Server)
+Open a terminal and run:
+
+bash
+cd server
+npm install    # Install dependencies (if not already done)
+npm run server # Starts the server with nodemon (auto-restarts on changes)
+
+2. Frontend (Client)
+Open a second terminal and run:
+
+bash
+cd Frontend
+npm install    # Install dependencies (if not already done)
+npm run dev    # Starts the Vite development server
