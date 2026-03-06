@@ -122,7 +122,10 @@ Ensure you have **Node.js (v18+)** installed. You will also need API keys from t
 
 4.  **Start the Server:**
     ```bash
-    node server.js
+    cd server
+    npm install    # Install dependencies (if not already done)
+    npm run server # Starts the server with nodemon (auto-restarts on changes)
+
     ```
 
 ### 2. Frontend Setup
@@ -149,9 +152,9 @@ Ensure you have **Node.js (v18+)** installed. You will also need API keys from t
 
 4.  **Start the Frontend:**
     ```bash
-    npm run dev
-    # or
-    yarn dev
+    cd Frontend
+    npm install    # Install dependencies (if not already done)
+    npm run dev    # Starts the Vite development server
     ```
 
 ---
