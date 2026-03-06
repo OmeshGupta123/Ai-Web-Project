@@ -1,4 +1,5 @@
 import { useAuth } from '@clerk/clerk-react';
+import { useGuest } from '../context/GuestContext';
 import axios from 'axios';
 import { Image, Sparkles } from 'lucide-react';
 import React, { useState } from 'react'
@@ -18,23 +19,20 @@ const GenerateImages = () => {
   const [content, setContent] = useState('');
 
   const { getToken } = useAuth();
+  const { isGuest, guestMode } = useGuest();
 
   const onSubmitHandler = async (e) => {
     e.preventDefault();
     try {
       setLoading(true);
-      const promt = `Generate an image of ${input} in the style ${style}`;
+      const promt = `Generate an image of ${input} in the style ${selectedStyle}`;
 
-      const { data } = await axios.post('/api/ai/generate-image',
-        {
-          promt: promt,
-          publish: publish
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${await getToken()}`
-          }
-        }
+      const apiUrl = isGuest ? '/api/guest/ai/generate-image' : '/api/ai/generate-image';
+      const headers = isGuest ? { 'x-guest-mode': guestMode } : { Authorization: `Bearer ${await getToken()}` };
+
+      const { data } = await axios.post(apiUrl,
+        { promt: promt, publish: publish },
+        { headers }
       )
       if (data.success) {
         setContent(data.content)
@@ -95,20 +93,20 @@ const GenerateImages = () => {
           <h1 className='text-xl font-semibold'>Generated image</h1>
         </div>
 
-            {
-              !content ? ( <div className='flex-1 flex justify-center items-center'>
-          <div className='text-sm flex flex-col items-center gap-5 text-gray-400'>
-            <Image className='w-9 h-9' />
-            <p>Enter a topic and click "Generate Image" to get started</p>
-          </div>
+        {
+          !content ? (<div className='flex-1 flex justify-center items-center'>
+            <div className='text-sm flex flex-col items-center gap-5 text-gray-400'>
+              <Image className='w-9 h-9' />
+              <p>Enter a topic and click "Generate Image" to get started</p>
+            </div>
 
-        </div>) : (
+          </div>) : (
             <div className='mt-3 h-full'>
               <img src={content} alt="image" className='w-full h-full rounded-xl' />
             </div>
-        )
-            }
-       
+          )
+        }
+
       </div>
     </div>
   )

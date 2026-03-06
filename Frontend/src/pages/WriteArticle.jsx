@@ -4,6 +4,7 @@ import axios from 'axios'
 import { useAuth } from '@clerk/clerk-react';
 import toast from 'react-hot-toast'
 import Markdown from 'react-markdown'
+import { useGuest } from '../context/GuestContext';
 
 axios.defaults.baseURL = import.meta.env.VITE_BASE_URL;
 
@@ -20,7 +21,8 @@ const WriteArticle = () => {
   const [loading, setLoading] = useState(false);
   const [content, setContent] = useState('')
 
-  const { getToken } = useAuth()
+  const { getToken } = useAuth();
+  const { isGuest, guestMode } = useGuest();
 
   const onSubmitHandler = async (e) => {
     e.preventDefault()
@@ -29,17 +31,13 @@ const WriteArticle = () => {
       setLoading(true);
       const promt = `Write an article about ${input} in ${selectedLength.text}`
 
+      const apiUrl = isGuest ? '/api/guest/ai/generate-article' : '/api/ai/generate-article';
+      const headers = isGuest ? { 'x-guest-mode': guestMode } : { Authorization: `Bearer ${await getToken()}` };
+
       const { data } = await axios.post(
-        '/api/ai/generate-article',
-        {
-          promt: promt,
-          length: selectedLength.length
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${await getToken()}`
-          }
-        }
+        apiUrl,
+        { promt: promt, length: selectedLength.length },
+        { headers }
       );
 
       if (data.success) {
@@ -49,7 +47,11 @@ const WriteArticle = () => {
       }
 
     } catch (error) {
-      toast.error(error.message)
+      if (error.response && error.response.data && error.response.data.message) {
+        toast.error(error.response.data.message);
+      } else {
+        toast.error(error.message);
+      }
     }
     setLoading(false)
   }
@@ -107,14 +109,14 @@ const WriteArticle = () => {
             </div>
             <div className='h-120 p-1 text-sm text-slate-600 reset-tw'>
               <Markdown>{content}</Markdown>
-              
+
             </div>
           </div>
         )
       }
-      </div>
+    </div>
   )
 }
-      
 
-      export default WriteArticle
+
+export default WriteArticle

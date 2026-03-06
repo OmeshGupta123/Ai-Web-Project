@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { Gem, Sparkles } from 'lucide-react';
-import { Protect, useAuth } from '@clerk/clerk-react';
+import { useAuth, useUser } from '@clerk/clerk-react';
+import { useGuest } from '../context/GuestContext';
 import CreationItem from '../components/CreationItem';
 import axios from 'axios'
 import toast from 'react-hot-toast';
@@ -11,13 +12,25 @@ const Dashboard = () => {
 
   const [creations, setCreations] = useState([]);
   const [loading, setLoading] = useState(true);
-  
-  const { getToken } = useAuth();
+  const { getToken, isLoaded, isSignedIn } = useAuth();
+  const { user } = useUser();
+  const { isGuest } = useGuest();
 
   const getDashboardData = async () => {
+
+    if (isGuest) {
+      setCreations([]);
+      setLoading(false);
+      return;
+    }
     try {
-      const {data} = await axios.get('/api/ai/user/get-user-creations', {
-        headers: { Authorization: `Bearer ${await getToken()}` }
+      const token = await getToken();
+      if (!token) {
+        setLoading(false);
+        return;
+      }
+      const { data } = await axios.get('/api/ai/user/get-user-creations', {
+        headers: { Authorization: `Bearer ${token}` }
       })
       if (data.success) {
         setCreations(data.creations)
@@ -25,14 +38,22 @@ const Dashboard = () => {
         toast.error(data.message)
       }
     } catch (error) {
-      toast.error(error.message)
+      toast.error(error.message || "Failed to load creations")
     }
     setLoading(false);
   }
 
   useEffect(() => {
-    getDashboardData()
-  }, [])
+    if (!isLoaded) return;
+    if (isSignedIn && user) {
+      getDashboardData();
+    } else if (isGuest) {
+      setLoading(false);
+      setCreations([]);
+    }
+
+  }, [isLoaded, isSignedIn, user, isGuest]);
+
 
   return (
     <div className='h-full overflow-y-scroll p-6'>
@@ -54,7 +75,7 @@ const Dashboard = () => {
           <div className='text-slate-600'>
             <p className='text-sm'>Active plan</p>
             <h2 className='text-xl font-semibold'>
-              <Protect plan='Premium' fallback='Free'>Premium</Protect>
+              Free
             </h2>
           </div>
           <div className='w-10 h-10 rounded-lg bg-gradient-to-br from-[#FF61C5] to-[#9E53EE] text-white flex justify-center items-center'>

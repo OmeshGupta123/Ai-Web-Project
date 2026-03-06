@@ -1,4 +1,5 @@
 import { useAuth } from '@clerk/clerk-react';
+import { useGuest } from '../context/GuestContext';
 import axios from 'axios';
 import { Check, Eraser, Sparkles } from 'lucide-react';
 import React, { useState } from 'react'
@@ -9,29 +10,28 @@ axios.defaults.baseURL = import.meta.env.VITE_BASE_URL;
 const RemoveBackground = () => {
 
   const [input, setInput] = useState(null);
-  const [loading,setLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [content, setContent] = useState('');
 
-  const {getToken} = useAuth();
+  const { getToken } = useAuth();
+  const { isGuest, guestMode } = useGuest();
 
   const onSubmitHandler = async (e) => {
     e.preventDefault();
     try {
       setLoading(true)
       const formData = new FormData();
-      formData.append('image',input);
-      const {data} = await axios.post('/api/ai/remove-image-background',formData,
-      {
-        headers: {
-          Authorization: `Bearer ${await getToken()}`
-        }
+      formData.append('image', input);
+
+      const apiUrl = isGuest ? '/api/guest/ai/remove-image-background' : '/api/ai/remove-image-background';
+      const headers = isGuest ? { 'x-guest-mode': guestMode } : { Authorization: `Bearer ${await getToken()}` };
+
+      const { data } = await axios.post(apiUrl, formData, { headers })
+      if (data.success) {
+        setContent(data.content);
+      } else {
+        toast.error(data.message);
       }
-    )
-    if(data.success){
-      setContent(data.content);
-    }else{
-      toast.error(data.message);
-    }
     } catch (error) {
       toast.error(error.message);
     }
@@ -60,17 +60,17 @@ const RemoveBackground = () => {
 
             />
             {/* Show file name if selected */}
-           {input ? (
-            <p className='flex text-xl text-green-500 font-normal mt-1 gap-3 ml-5 mb-3'>
-              {input.name}
-              <Check />
-            </p>
-          ) : <p className='flex flex-wrap text-sm text-black font-normal mt-1 gap-3 ml-5 mb-3'>
+            {input ? (
+              <p className='flex text-xl text-green-500 font-normal mt-1 gap-3 ml-5 mb-3'>
+                {input.name}
+                <Check />
+              </p>
+            ) : <p className='flex flex-wrap text-sm text-black font-normal mt-1 gap-3 ml-5 mb-3'>
               No file chosen
             </p>}
           </label>
 
-        
+
           <p className='text-xs text-gray-500 font-light mt-1'>Supports JPG, PNG, And other image format</p>
 
           <button disabled={loading} className='w-full flex justify-center items-center gap-2 bg-gradient-to-r from-[#F6AB41] to-[#FF4938] text-white px-4 py-2 mt-6 text-sm rounded-lg cursor-pointer'>
@@ -81,26 +81,26 @@ const RemoveBackground = () => {
       </form>
 
       {/* Right col  */}
-     <div className='w-full max-w-lg p-4 bg-white rounded-2xl flex flex-col border border-gray-200 min-h-120 max-h-[600px]'>
+      <div className='w-full max-w-lg p-4 bg-white rounded-2xl flex flex-col border border-gray-200 min-h-120 max-h-[600px]'>
         <div className='flex items-center gap-3'>
           <Eraser className='w-5 h-5 text-[#00AD25]' />
           <h1 className='text-xl font-semibold'>Process Image</h1>
         </div>
 
-            {
-              !content ? ( <div className='flex-1 flex justify-center items-center'>
-          <div className='text-sm flex flex-col items-center gap-5 text-gray-400'>
-            <Eraser className='w-9 h-9' />
-            <p>Upload an image and click "Remove Background" to get started</p>
+        {
+          !content ? (<div className='flex-1 flex justify-center items-center'>
+            <div className='text-sm flex flex-col items-center gap-5 text-gray-400'>
+              <Eraser className='w-9 h-9' />
+              <p>Upload an image and click "Remove Background" to get started</p>
+            </div>
           </div>
-        </div>
-        ) : (
+          ) : (
             <div className='mt-3 h-full'>
               <img src={content} alt="image" className='w-full h-full rounded-xl' />
             </div>
-        )
-            }
-       
+          )
+        }
+
       </div>
     </div>
   )

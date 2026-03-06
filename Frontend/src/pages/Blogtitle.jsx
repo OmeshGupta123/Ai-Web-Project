@@ -1,4 +1,5 @@
 import { useAuth } from '@clerk/clerk-react';
+import { useGuest } from '../context/GuestContext';
 import axios from 'axios';
 import { Hash, Sparkle, Sparkles } from 'lucide-react'
 import React, { useState } from 'react'
@@ -16,7 +17,8 @@ const Blogtitle = () => {
   const [loading, setLoading] = useState(false);
   const [content, setContent] = useState('');
 
-  const { getToken } = useAuth()
+  const { getToken } = useAuth();
+  const { isGuest, guestMode } = useGuest();
 
   const onSubmitHandler = async (e) => {
     e.preventDefault();
@@ -25,23 +27,33 @@ const Blogtitle = () => {
       setLoading(true);
       const promt = `Make Blogtitle on ${input} and the category is ${selectCategory}`
 
-      const { data } = await axios.post('/api/ai/generate-blog-title', {
-        promt: promt
-      },
-        {
-          headers: {
-            Authorization: `Bearer ${await getToken()}`
-          }
-        }
-      )
+      const apiUrl = isGuest ? '/api/guest/ai/generate-blog-title' : '/api/ai/generate-blog-title';
+      const headers = isGuest ? { 'x-guest-mode': guestMode } : { Authorization: `Bearer ${await getToken()}` };
+
+      const { data } = await axios.post(apiUrl, { promt }, { headers });
 
       if (data.success) {
         setContent(data.content)
       } else {
-        toast.error(data.messgage);
+        const errorMsg = data.message || data.messgage || "An error occurred";
+        if (errorMsg.toLowerCase().includes('limit') || errorMsg.toLowerCase().includes('quota') || errorMsg.toLowerCase().includes('body') || errorMsg.includes('429')) {
+          toast.error("Gemini API limit is over. Please try again later.");
+        } else {
+          toast.error(errorMsg);
+        }
       }
     } catch (error) {
-      toast.error(error.messgage)
+      let errorMsg = '';
+      if (error.response && error.response.data && error.response.data.message) {
+        errorMsg = error.response.data.message;
+      } else {
+        errorMsg = error.message || "An error occurred";
+      }
+      if (errorMsg.toLowerCase().includes('limit') || errorMsg.toLowerCase().includes('quota') || errorMsg.toLowerCase().includes('body') || errorMsg.includes('429')) {
+        toast.error("Gemini API limit is over. Please try again later.");
+      } else {
+        toast.error(errorMsg);
+      }
     }
     setLoading(false)
   }
@@ -91,10 +103,10 @@ const Blogtitle = () => {
           </div>
         </div>) : (
           <div className='mt-3 w-full max-w-xl p-4 bg-white rounded-2xl border border-gray-200 min-h-120 max-h-[600px] overflow-y-scroll'>
-             <div className='flex items-center gap-3 '>
-            <Hash className='w-5 h-5 text-[#8E37EB]' />
-            <h1 className='text-xl font-semibold'>Generated Titles</h1>
-          </div>
+            <div className='flex items-center gap-3 '>
+              <Hash className='w-5 h-5 text-[#8E37EB]' />
+              <h1 className='text-xl font-semibold'>Generated Titles</h1>
+            </div>
             <div className='h-120 p-1 text-sm text-slate-600 reset-tw'>
               <Markdown>{content}</Markdown>
             </div>

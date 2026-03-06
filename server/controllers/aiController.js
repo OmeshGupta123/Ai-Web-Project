@@ -1,4 +1,4 @@
-import OpenAI from "openai";
+import { GoogleGenAI } from "@google/genai";
 import sql from "../configs/db.js";
 import { clerkClient } from "@clerk/express";
 import axios from "axios";
@@ -8,51 +8,76 @@ import pdf from 'pdf-parse/lib/pdf-parse.js'
 import 'dotenv/config'
 import { removeBackground } from "@cloudinary/url-gen/actions/effect";
 
-const AI = new OpenAI({
+
+const AI = new GoogleGenAI({
     apiKey: process.env.GEMINI_API_KEY,
-    baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/"
 });
+
+const handleError = (error, res) => {
+    console.error(error);
+
+    let errorString = error?.message || String(error);
+    let errorMessage = "An unexpected error occurred.";
+
+    // Try to parse Gemini API stringified JSON errors
+    if (errorString.startsWith('{') && errorString.includes('"error"')) {
+        try {
+            const parsed = JSON.parse(errorString);
+            if (parsed.error && parsed.error.message) {
+                errorString = parsed.error.message;
+            }
+        } catch (e) { }
+    }
+
+    if (error?.status === 429 || errorString.includes('429') || errorString.includes('RESOURCE_EXHAUSTED') || errorString.includes('quota exceeded')) {
+        errorMessage = "Gemini API limit is over. Please try again later.";
+    } else if (error?.status === 400 || errorString.includes('API Key not found') || errorString.includes('API_KEY_INVALID') || errorString.includes('valid API key')) {
+        errorMessage = "API key is invalid or missing. Please check the backend configuration.";
+    } else if (errorString.includes('database') || errorString.includes('relation') || errorString.includes('sql') || errorString.includes('neon')) {
+        errorMessage = "Database fetching problem. Please try again later.";
+    } else {
+        errorMessage = errorString; // Fallback to original message
+    }
+
+    res.json({ success: false, message: errorMessage });
+};
 
 // generate article
 export const generateArticle = async (req, res) => {
     try {
         const { userId } = req.auth;
         const { promt, length } = req.body;
-        const plan = req.plan;
-        const free_usage = req.free_usage;
+        // const plan = req.plan;
+        // const free_usage = req.free_usage;
 
-        if (plan != 'premium' && free_usage >= 10) {
-            return res.json({ success: false, message: "Limit reached. upgrade to continue." })
-        }
+        // if (plan != 'premium' && free_usage >= 10) {
+        //     return res.json({ success: false, message: "Limit reached. upgrade to continue." })
+        // }
 
-        const response = await AI.chat.completions.create({
-            model: "gemini-2.0-flash",
-            messages: [
-                {
-                    role: "user",
-                    content: promt,
-                },
-            ],
-            temperature: 0.7,
-            max_tokens: length,
+        const response = await AI.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: promt,
+            config: {
+                temperature: 0.7,
+                maxOutputTokens: length*2,
+            }
         });
 
-        const content = response.choices[0].message.content;
+        const content = response.text;
         await sql`INSERT INTO creations (user_id, promt, content, type) VALUES (${userId},${promt},${content},'article')`
 
-        if (plan !== 'premium') {
-            await clerkClient.users.updateUserMetadata(userId, {
-                privateMetadata: {
-                    free_usage: free_usage + 1,
-                }
-            })
-        }
+        // if (plan !== 'premium' && userId) {
+        //     await clerkClient.users.updateUserMetadata(userId, {
+        //         privateMetadata: {
+        //             free_usage: free_usage + 1,
+        //         }
+        //     })
+        // }
 
         res.json({ success: true, content })
 
     } catch (error) {
-        console.log(error.message);
-        res.json({ success: false, message: error.message })
+        return handleError(error, res);
     }
 }
 
@@ -63,41 +88,37 @@ export const generateBlogTitle = async (req, res) => {
     try {
         const { userId } = req.auth;
         const { promt } = req.body;
-        const plan = req.plan;
-        const free_usage = req.free_usage;
+        // const plan = req.plan;
+        // const free_usage = req.free_usage;
 
-        if (plan != 'premium' && free_usage >= 10) {
-            return res.json({ success: false, message: "Limit reached. upgrade to continue." })
-        }
+        // if (plan != 'premium' && free_usage >= 10) {
+        //     return res.json({ success: false, message: "Limit reached. upgrade to continue." })
+        // }
 
-        const response = await AI.chat.completions.create({
-            model: "gemini-2.0-flash",
-            messages: [
-                {
-                    role: "user",
-                    content: promt,
-                },
-            ],
-            temperature: 0.7,
-            max_tokens: 100,
+        const response = await AI.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: promt,
+            config: {
+                temperature: 0.7,
+                maxOutputTokens: 5000,
+            }
         });
 
-        const content = response.choices[0].message.content;
+        const content = response.text;
         await sql`INSERT INTO creations (user_id, promt, content, type) VALUES (${userId},${promt},${content},'blog-title')`
 
-        if (plan !== 'premium') {
-            await clerkClient.users.updateUserMetadata(userId, {
-                privateMetadata: {
-                    free_usage: free_usage + 1,
-                }
-            })
-        }
+        // if (plan !== 'premium' && userId) {
+        //     await clerkClient.users.updateUserMetadata(userId, {
+        //         privateMetadata: {
+        //             free_usage: free_usage + 1,
+        //         }
+        //     })
+        // }
 
         res.json({ success: true, content })
 
     } catch (error) {
-        console.log(error.message);
-        res.json({ success: false, message: error.message })
+        return handleError(error, res);
     }
 }
 
@@ -107,11 +128,11 @@ export const generateImage = async (req, res) => {
     try {
         const { userId } = req.auth;
         const { promt, publish } = req.body;
-        const plan = req.plan;
+        // const plan = req.plan;
 
-        if (plan != 'premium') {
-            return res.json({ success: false, message: "This feature is only available for premium subscriptions" });
-        }
+        // if (plan != 'premium') {
+        //     return res.json({ success: false, message: "This feature is only available for premium subscriptions" });
+        // }
 
         const formData = new FormData()
         formData.append('prompt', promt)
@@ -132,8 +153,7 @@ export const generateImage = async (req, res) => {
         res.json({ success: true, content: secure_url })
 
     } catch (error) {
-        console.log(error.message);
-        res.json({ success: false, message: error.message })
+        return handleError(error, res);
     }
 }
 
@@ -143,13 +163,13 @@ export const removeImageBackground = async (req, res) => {
     try {
         const { userId } = req.auth;
         const image = req.file;
-        const plan = req.plan;
+        // const plan = req.plan;
 
-        if (plan != 'premium') {
-            return res.json({ success: false, message: "This feature is only available for premium subscriptions" });
-        }
+        // if (plan != 'premium') {
+        //     return res.json({ success: false, message: "This feature is only available for premium subscriptions" });
+        // }
 
-         const uploadResponse = await cloudinary.uploader.upload(image.path);
+        const uploadResponse = await cloudinary.uploader.upload(image.path);
         // Use the public ID from the upload response to create a URL with background removal
         const imageUrlWithBackgroundRemoval = cloudinary.url(uploadResponse.public_id, {
             transformation: [
@@ -163,8 +183,7 @@ export const removeImageBackground = async (req, res) => {
         res.json({ success: true, content: imageUrlWithBackgroundRemoval })
 
     } catch (error) {
-        console.log(error.message);
-        res.json({ success: false, message: error.message })
+        return handleError(error, res);
     }
 }
 
@@ -173,13 +192,13 @@ export const removeImageBackground = async (req, res) => {
 export const removeImageObject = async (req, res) => {
     try {
         const { userId } = req.auth;
-        const  image = req.file;
-        const plan = req.plan;
+        const image = req.file;
+        // const plan = req.plan;
         const { object } = req.body
 
-        if (plan != 'premium') {
-            return res.json({ success: false, message: "This feature is only available for premium subscriptions" });
-        }
+        // if (plan != 'premium') {
+        //     return res.json({ success: false, message: "This feature is only available for premium subscriptions" });
+        // }
 
         const { public_id } = await cloudinary.uploader.upload(image.path)
 
@@ -197,8 +216,7 @@ export const removeImageObject = async (req, res) => {
         res.json({ success: true, content: imageUrl })
 
     } catch (error) {
-        console.log(error.message);
-        res.json({ success: false, message: error.message })
+        return handleError(error, res);
     }
 }
 
@@ -208,34 +226,31 @@ export const resumeReview = async (req, res) => {
     try {
         const { userId } = req.auth;
         const resume = req.file;
-        const plan = req.plan;
+        // const plan = req.plan;
 
-        if (plan != 'premium') {
-            return res.json({ success: false, message: "This feature is only available for premium subscriptions" });
-        }
+        // if (plan != 'premium') {
+        //     return res.json({ success: false, message: "This feature is only available for premium subscriptions" });
+        // }
 
-        if (resume.size > 5 * 1024 * 1024) {
-            return res.json({ success: false, message: "Resume file size exeeds allowed size (5MB)." })
+        if (resume.size > 2 * 1024 * 1024) {
+            return res.json({ success: false, message: "Resume file size exeeds allowed size (2MB)." })
         }
 
         const dataBuffer = fs.readFileSync(resume.path);
         const pdfData = await pdf(dataBuffer)
 
-        const promt = `Review the following resume and provide constructive feedback on its strengths, weakness, and areas for improvement. Resume Content:/n/n${pdfData.text}`
+        const promt = `Review the following resume and provide constructive feedback on its strengths, weakness, and areas for improvement. Resume Content:\n\n${pdfData.text}`
 
 
-        const response = await AI.chat.completions.create({
-            model: "gemini-2.0-flash",
-            messages: [
-                {
-                    role: "user",
-                    content: promt,
-                },
-            ],
-            temperature: 0.7,
-            max_tokens: 1000,
+        const response = await AI.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: promt,
+            config: {
+                temperature: 0.7,
+                maxOutputTokens: 5000,
+            }
         });
-        const content = response.choices[0].message.content;
+        const content = response.text;
 
 
         await sql`INSERT INTO creations (user_id, promt, content, type) VALUES (${userId},'Review the uploaded resume',${content}, 'Resume-Review')`;
@@ -243,7 +258,6 @@ export const resumeReview = async (req, res) => {
         res.json({ success: true, content });
 
     } catch (error) {
-        console.log(error.message);
-        res.json({ success: false, message: error.message })
+        return handleError(error, res);
     }
 }

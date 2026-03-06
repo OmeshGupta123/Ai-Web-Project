@@ -1,4 +1,5 @@
 import { useAuth } from '@clerk/clerk-react';
+import { useGuest } from '../context/GuestContext';
 import axios from 'axios';
 import { Check, FileText, Sparkles } from 'lucide-react';
 import React, { useState } from 'react'
@@ -14,6 +15,7 @@ const ReviewResume = () => {
   const [content, setContent] = useState('');
 
   const { getToken } = useAuth();
+  const { isGuest, guestMode } = useGuest();
 
   const onSubmitHandler = async (e) => {
     e.preventDefault();
@@ -23,19 +25,33 @@ const ReviewResume = () => {
       setLoading(true)
       const formData = new FormData();
       formData.append('resume', input);
-      const { data } = await axios.post('/api/ai/resume-review', formData, {
-        headers: {
-          Authorization: `Bearer ${await getToken()}`
-        }
-      }
-      )
+
+      const apiUrl = isGuest ? '/api/guest/ai/resume-review' : '/api/ai/resume-review';
+      const headers = isGuest ? { 'x-guest-mode': guestMode } : { Authorization: `Bearer ${await getToken()}` };
+
+      const { data } = await axios.post(apiUrl, formData, { headers })
       if (data.success) {
         setContent(data.content);
       } else {
-        toast.error(data.message);
+        const errorMsg = data.message || "An error occurred";
+        if (errorMsg.toLowerCase().includes('limit') || errorMsg.toLowerCase().includes('quota') || errorMsg.toLowerCase().includes('body') || errorMsg.includes('429')) {
+          toast.error("Gemini API limit is over. Please try again later.");
+        } else {
+          toast.error(errorMsg);
+        }
       }
     } catch (error) {
-      toast.error(error.message);
+      let errorMsg = '';
+      if (error.response && error.response.data && error.response.data.message) {
+        errorMsg = error.response.data.message;
+      } else {
+        errorMsg = error.message || "An error occurred";
+      }
+      if (errorMsg.toLowerCase().includes('limit') || errorMsg.toLowerCase().includes('quota') || errorMsg.toLowerCase().includes('body') || errorMsg.includes('429')) {
+        toast.error("Gemini API limit is over. Please try again later.");
+      } else {
+        toast.error(errorMsg);
+      }
     }
     setLoading(false);
   }
@@ -76,7 +92,7 @@ const ReviewResume = () => {
 
           <button disabled={loading} className='w-full flex justify-center items-center gap-2 bg-gradient-to-r from-[#00DA83] to-[#009BB3] text-white px-4 py-2 mt-6 text-sm rounded-lg cursor-pointer'>
             {!loading ? <FileText className='w-5' /> : <span className='w-4 h-4 my-1 rounded-full border-2 border-t-transparent animate-spin'></span>}
-            Remove Background
+            Review Resume
           </button>
         </div>
       </form>

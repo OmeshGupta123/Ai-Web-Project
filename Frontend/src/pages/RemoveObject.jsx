@@ -1,4 +1,5 @@
 import { useAuth } from '@clerk/clerk-react';
+import { useGuest } from '../context/GuestContext';
 import { Check, Scissors, Sparkles } from 'lucide-react';
 import React, { useState } from 'react'
 import axios from 'axios';
@@ -6,35 +7,37 @@ import toast from 'react-hot-toast';
 
 axios.defaults.baseURL = import.meta.env.VITE_BASE_URL;
 
-const RemoveObject = () =>  {
+const RemoveObject = () => {
 
   const [input, setInput] = useState('');
   const [object, setObject] = useState(null);
   const [loading, setLoading] = useState(false);
   const [content, setContent] = useState("")
-  
-  const {getToken} = useAuth();
+
+  const { getToken } = useAuth();
+  const { isGuest, guestMode } = useGuest();
 
   const onSubmitHandler = async (e) => {
     e.preventDefault();
     try {
       setLoading(true);
 
-      if(object.split(' ').length > 1){
+      if (object.split(' ').length > 1) {
         return toast("please enter only one object name");
       }
 
       const formData = new FormData();
-      formData.append('image',input);
-      formData.append('object',object);
+      formData.append('image', input);
+      formData.append('object', object);
 
-      const {data} = await axios.post('/api/ai/remove-image-object',
-        formData,{headers: {Authorization: `Bearer ${await getToken()}`}}
-      )
+      const apiUrl = isGuest ? '/api/guest/ai/remove-image-object' : '/api/ai/remove-image-object';
+      const headers = isGuest ? { 'x-guest-mode': guestMode } : { Authorization: `Bearer ${await getToken()}` };
 
-      if(data.success){
+      const { data } = await axios.post(apiUrl, formData, { headers })
+
+      if (data.success) {
         setContent(data.content);
-      }else{
+      } else {
         toast.error(data.message);
       }
 
@@ -66,24 +69,24 @@ const RemoveObject = () =>  {
             />
 
             {/* Show file name if selected */}
-           {input ? (
-            <p className='flex flex-wrap text-xl text-green-500 font-normal mt-1 gap-3 ml-5 mb-3'>
-              {input.name}
-              <Check />
-            </p>
-          ) : <p className='flex flex-wrap text-sm text-black font-normal mt-1 gap-3 ml-5 mb-3'>
+            {input ? (
+              <p className='flex flex-wrap text-xl text-green-500 font-normal mt-1 gap-3 ml-5 mb-3'>
+                {input.name}
+                <Check />
+              </p>
+            ) : <p className='flex flex-wrap text-sm text-black font-normal mt-1 gap-3 ml-5 mb-3'>
               No file chosen
             </p>}
           </label>
 
           <p className='mt-6 text-sm font-medium'>Describe object to remove</p>
 
-         <textarea required onChange={(e) => setObject(e.target.value)} value={object} placeholder="e.g., car in background, free from the image"  className="w-full h-30 p-3 resize-none rounded-md border border-gray-300 mt-1"></textarea>
+          <textarea required onChange={(e) => setObject(e.target.value)} value={object} placeholder="e.g., car in background, free from the image" className="w-full h-30 p-3 resize-none rounded-md border border-gray-300 mt-1"></textarea>
 
           <p className='text-xs text-gray-500 font-light mt-1'>Be specific about what you want to remove</p>
 
           <button disabled={loading} className='w-full flex justify-center items-center gap-2 bg-gradient-to-r from-[#417DF6] to-[#8E37EB] text-white px-4 py-2 mt-6 text-sm rounded-lg cursor-pointer'>
-            {!loading ? <Scissors className='w-5' />  : <span className='w-4 h-4 my-1 rounded-full border-2 border-t-transparent animate-spin'></span>}
+            {!loading ? <Scissors className='w-5' /> : <span className='w-4 h-4 my-1 rounded-full border-2 border-t-transparent animate-spin'></span>}
             Remove object
           </button>
         </div>
@@ -96,20 +99,20 @@ const RemoveObject = () =>  {
           <h1 className='text-xl font-semibold'>Processed Image</h1>
         </div>
 
-          {
-            !content ? (
-        <div className='flex-1 flex justify-center items-center'>
-          <div className='text-sm flex flex-col items-center gap-5 text-gray-400'>
-            <Scissors className='w-9 h-9' />
-            <p>Upload an image and describe what to remove</p>
-          </div>
+        {
+          !content ? (
+            <div className='flex-1 flex justify-center items-center'>
+              <div className='text-sm flex flex-col items-center gap-5 text-gray-400'>
+                <Scissors className='w-9 h-9' />
+                <p>Upload an image and describe what to remove</p>
+              </div>
 
-        </div>) : (
-           <div className='mt-3 h-full'>
+            </div>) : (
+            <div className='mt-3 h-full'>
               <img src={content} alt="image" className='w-full h-full rounded-xl' />
             </div>
-        )
-          }
+          )
+        }
 
       </div>
 
